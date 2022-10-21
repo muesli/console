@@ -29,7 +29,9 @@ var (
 	ErrNotImplemented = errors.New("not implemented")
 )
 
-func (m *master) initStdios() {
+func (m *master) initStdios() []error {
+	var errs []error
+
 	m.in = windows.Handle(os.Stdin.Fd())
 	if err := windows.GetConsoleMode(m.in, &m.inMode); err == nil {
 		// Validate that windows.ENABLE_VIRTUAL_TERMINAL_INPUT is supported, but do not set it.
@@ -40,7 +42,7 @@ func (m *master) initStdios() {
 		// remembers invalid bits on input handles.
 		windows.SetConsoleMode(m.in, m.inMode)
 	} else {
-		fmt.Printf("failed to get console mode for stdin: %v\n", err)
+		errs = append(errs, fmt.Errorf("unable to get console mode for stdin: %w", err))
 	}
 
 	m.out = windows.Handle(os.Stdout.Fd())
@@ -51,7 +53,7 @@ func (m *master) initStdios() {
 			windows.SetConsoleMode(m.out, m.outMode)
 		}
 	} else {
-		fmt.Printf("failed to get console mode for stdout: %v\n", err)
+		errs = append(errs, fmt.Errorf("unable to get console mode for stdout: %w", err))
 	}
 
 	m.err = windows.Handle(os.Stderr.Fd())
@@ -62,8 +64,10 @@ func (m *master) initStdios() {
 			windows.SetConsoleMode(m.err, m.errMode)
 		}
 	} else {
-		fmt.Printf("failed to get console mode for stderr: %v\n", err)
+		errs = append(errs, fmt.Errorf("unable to get console mode for stderr: %w", err))
 	}
+
+	return errs
 }
 
 type master struct {
@@ -219,6 +223,8 @@ func newMaster(f File) (Console, error) {
 		return nil, errors.New("creating a console from a file is not supported on windows")
 	}
 	m := &master{}
-	m.initStdios()
+
+	// ignore console mode warnings when in/out is redirected
+	_ = m.initStdios()
 	return m, nil
 }
