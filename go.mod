@@ -1,4 +1,4 @@
-module github.com/containerd/console
+module github.com/muesli/console
 
 go 1.13
 
